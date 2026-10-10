@@ -1,7 +1,9 @@
 package cl.duoc.msusuario.controller;
 
+import cl.duoc.msusuario.dto.UsuarioRequest;
 import cl.duoc.msusuario.model.Usuario;
 import cl.duoc.msusuario.service.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,22 +32,42 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<Usuario> crearUsuario(@RequestBody Usuario usuario) {
-        Usuario nuevoUsuario = usuarioService.guardarUsuario(usuario);
+    public ResponseEntity<Usuario> crearUsuario(
+            @Valid @RequestBody UsuarioRequest request) {
+
+        Usuario usuario = new Usuario(
+                null,
+                request.getNombre(),
+                request.getApellido(),
+                request.getEmail(),
+                request.getPassword()
+        );
+
+        Usuario nuevoUsuario =
+                usuarioService.guardarUsuario(usuario);
+
         return ResponseEntity.ok(nuevoUsuario);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Usuario> actualizarUsuario(
             @PathVariable Long id,
-            @RequestBody Usuario usuario) {
+            @Valid @RequestBody UsuarioRequest request) {
 
         if (usuarioService.buscarPorId(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        usuario.setId(id);
-        Usuario usuarioActualizado = usuarioService.guardarUsuario(usuario);
+        Usuario usuario = new Usuario(
+                id,
+                request.getNombre(),
+                request.getApellido(),
+                request.getEmail(),
+                request.getPassword()
+        );
+
+        Usuario usuarioActualizado =
+                usuarioService.guardarUsuario(usuario);
 
         return ResponseEntity.ok(usuarioActualizado);
     }
@@ -58,6 +80,7 @@ public class UsuarioController {
         }
 
         usuarioService.eliminarUsuario(id);
+
         return ResponseEntity.noContent().build();
     }
 }

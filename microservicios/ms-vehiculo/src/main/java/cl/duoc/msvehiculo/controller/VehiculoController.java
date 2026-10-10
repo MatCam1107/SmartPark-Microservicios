@@ -1,7 +1,9 @@
 package cl.duoc.msvehiculo.controller;
 
+import cl.duoc.msvehiculo.dto.VehiculoRequest;
 import cl.duoc.msvehiculo.model.Vehiculo;
 import cl.duoc.msvehiculo.service.VehiculoService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,21 +32,42 @@ public class VehiculoController {
     }
 
     @PostMapping
-    public ResponseEntity<Vehiculo> crearVehiculo(@RequestBody Vehiculo vehiculo) {
-        Vehiculo nuevoVehiculo = vehiculoService.guardarVehiculo(vehiculo);
+    public ResponseEntity<Vehiculo> crearVehiculo(
+            @Valid @RequestBody VehiculoRequest request) {
+
+        Vehiculo vehiculo = new Vehiculo(
+                null,
+                request.getPatente(),
+                request.getMarca(),
+                request.getModelo(),
+                request.getColor(),
+                request.getUsuarioId()
+        );
+
+        Vehiculo nuevoVehiculo =
+                vehiculoService.guardarVehiculo(vehiculo);
+
         return ResponseEntity.ok(nuevoVehiculo);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Vehiculo> actualizarVehiculo(
             @PathVariable Long id,
-            @RequestBody Vehiculo vehiculo) {
+            @Valid @RequestBody VehiculoRequest request) {
 
         if (vehiculoService.buscarPorId(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        vehiculo.setId(id);
+        Vehiculo vehiculo = new Vehiculo(
+                id,
+                request.getPatente(),
+                request.getMarca(),
+                request.getModelo(),
+                request.getColor(),
+                request.getUsuarioId()
+        );
+
         Vehiculo vehiculoActualizado =
                 vehiculoService.guardarVehiculo(vehiculo);
 

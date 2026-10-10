@@ -1,7 +1,9 @@
 package cl.duoc.msnotificacion.controller;
 
+import cl.duoc.msnotificacion.dto.NotificacionRequest;
 import cl.duoc.msnotificacion.model.Notificacion;
 import cl.duoc.msnotificacion.service.NotificacionService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,7 +33,15 @@ public class NotificacionController {
 
     @PostMapping
     public ResponseEntity<Notificacion> crearNotificacion(
-            @RequestBody Notificacion notificacion) {
+            @Valid @RequestBody NotificacionRequest request) {
+
+        Notificacion notificacion = new Notificacion(
+                null,
+                request.getUsuarioId(),
+                request.getMensaje(),
+                request.getTipo(),
+                request.getLeida()
+        );
 
         Notificacion nuevaNotificacion =
                 notificacionService.guardarNotificacion(notificacion);
@@ -42,13 +52,19 @@ public class NotificacionController {
     @PutMapping("/{id}")
     public ResponseEntity<Notificacion> actualizarNotificacion(
             @PathVariable Long id,
-            @RequestBody Notificacion notificacion) {
+            @Valid @RequestBody NotificacionRequest request) {
 
         if (notificacionService.buscarPorId(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        notificacion.setId(id);
+        Notificacion notificacion = new Notificacion(
+                id,
+                request.getUsuarioId(),
+                request.getMensaje(),
+                request.getTipo(),
+                request.getLeida()
+        );
 
         Notificacion notificacionActualizada =
                 notificacionService.guardarNotificacion(notificacion);
