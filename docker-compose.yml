@@ -99,7 +99,81 @@ services:
       mysql-notificaciones:
         condition: service_healthy
 
+  mysql-ubicaciones:
+    image: mysql:8.4
+    container_name: mysql-ubicaciones
+    environment:
+      MYSQL_DATABASE: ubicaciones_db
+      MYSQL_USER: demo
+      MYSQL_PASSWORD: Demo123!
+      MYSQL_ROOT_PASSWORD: Root123!
+    ports:
+      - "3314:3306"
+    volumes:
+      - ubicaciones_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ms-ubicacion:
+    build:
+      context: ./microservicios/ms-ubicacion
+    container_name: ms-ubicacion
+    ports:
+      - "8086:8080"
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql-ubicaciones:3306/ubicaciones_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: demo
+      DB_PASSWORD: Demo123!
+    depends_on:
+      mysql-ubicaciones:
+        condition: service_healthy
+
+  mysql-estacionamientos:
+    image: mysql:8.4
+    container_name: mysql-estacionamientos
+    environment:
+      MYSQL_DATABASE: estacionamientos_db
+      MYSQL_USER: demo
+      MYSQL_PASSWORD: Demo123!
+      MYSQL_ROOT_PASSWORD: Root123!
+    ports:
+      - "3315:3306"
+    volumes:
+      - estacionamientos_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ms-estacionamiento:
+    build:
+      context: ./microservicios/ms-estacionamiento
+    container_name: ms-estacionamiento
+    ports:
+      - "8087:8080"
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql-estacionamientos:3306/estacionamientos_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: demo
+      DB_PASSWORD: Demo123!
+      VEHICULO_URL: http://ms-vehiculo:8080
+      NOTIFICACION_URL: http://ms-notificacion:8080
+    depends_on:
+      mysql-estacionamientos:
+        condition: service_healthy
+      ms-vehiculo:
+        condition: service_started
+      ms-notificacion:
+        condition: service_started
+
 volumes:
   usuarios_data:
   vehiculos_data:
   notificaciones_data:
+  ubicaciones_data:
+  estacionamientos_data:
