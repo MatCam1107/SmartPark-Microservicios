@@ -1,0 +1,1048 @@
+{
+  "info": {
+    "name": "SmartPark - Evaluación Parcial 2 (ms-ubicacion y ms-estacionamiento)",
+    "description": "Ejecutar las carpetas en orden: 1 (flujo completo) primero, luego 2, 3 y 4. Requiere `docker compose up -d --build`. Login: admin / 1234.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "usuarioUrl",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "vehiculoUrl",
+      "value": "http://localhost:8084"
+    },
+    {
+      "key": "notificacionUrl",
+      "value": "http://localhost:8085"
+    },
+    {
+      "key": "ubicacionUrl",
+      "value": "http://localhost:8086"
+    },
+    {
+      "key": "estacionamientoUrl",
+      "value": "http://localhost:8087"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Flujo completo (ejecutar en orden)",
+      "item": [
+        {
+          "name": "01 Login (obtiene token JWT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{usuarioUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"token\", json.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Listar usuarios (con token)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{usuarioUrl}}/api/usuarios"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Listar usuarios (sin token) -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{usuarioUrl}}/api/usuarios",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Crear vehículo (ms-vehiculo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{vehiculoUrl}}/api/vehiculos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"{{patente}}\",\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Yaris\",\n  \"color\": \"Rojo\",\n  \"usuarioId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const p = Math.random().toString(36).replace(/[^a-z0-9]/g, \"\").padEnd(6, \"x\").substring(0, 6).toUpperCase();",
+                  "pm.collectionVariables.set(\"patente\", p);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"vehiculoId\", json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 Crear zona (ms-ubicacion)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ubicacionUrl}}/api/zonas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{zonaNombre}}\",\n  \"descripcion\": \"Sector norte\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"zonaNombre\", \"Zona \" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"zonaId\", json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Crear estacionamiento (ms-estacionamiento)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"codigo\", \"T\" + (Date.now() % 100000000));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"estacionamientoId\", json.id);",
+                  "pm.test(\"Queda DISPONIBLE\", () => pm.expect(json.estado).to.eql(\"DISPONIBLE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 Crear ubicación del estacionamiento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ubicacionUrl}}/api/ubicaciones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zonaId\": {{zonaId}},\n  \"estacionamientoId\": {{estacionamientoId}},\n  \"piso\": 1,\n  \"sector\": \"{{codigo}}\",\n  \"latitud\": -33.45,\n  \"longitud\": -70.66\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"ubicacionId\", json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 Vincular ubicación al estacionamiento",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigo}}\",\n  \"ubicacionId\": {{ubicacionId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Tiene ubicacionId\", () => pm.expect(pm.response.json().ubicacionId).to.not.be.null);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 Consultar ubicación del estacionamiento (RF08)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{ubicacionUrl}}/api/ubicaciones/estacionamiento/{{estacionamientoId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 Listar estacionamientos disponibles (RF05)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/disponibles"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().map(e => e.id);",
+                  "pm.test(\"Incluye el estacionamiento creado\", () => pm.expect(ids).to.include(Number(pm.collectionVariables.get(\"estacionamientoId\"))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 Asignar estacionamiento al vehículo (RF07)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoId}}/asignar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculoId\": {{vehiculoId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Asignación ACTIVA\", () => pm.expect(json.estado).to.eql(\"ACTIVA\"));",
+                  "pm.test(\"Estacionamiento OCUPADO\", () => pm.expect(json.estacionamiento.estado).to.eql(\"OCUPADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 Ver notificación generada (ms-notificacion)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{notificacionUrl}}/api/notificaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Existe la notificación de esta asignación\", () => pm.expect(JSON.stringify(pm.response.json())).to.include(pm.collectionVariables.get(\"codigo\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 Asignar de nuevo -> 409 (ya ocupado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoId}}/asignar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculoId\": {{vehiculoId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 Liberar estacionamiento (RF09)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoId}}/liberar"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Asignación FINALIZADA\", () => pm.expect(pm.response.json().estado).to.eql(\"FINALIZADA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 Liberar de nuevo -> 409 (sin asignación activa)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoId}}/liberar"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 Historial de asignaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{estacionamientoUrl}}/api/asignaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Validaciones y errores",
+      "item": [
+        {
+          "name": "E1 Zona con datos inválidos -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ubicacionUrl}}/api/zonas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E2 Ubicación con zona inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ubicacionUrl}}/api/ubicaciones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zonaId\": 999999,\n  \"estacionamientoId\": 999001,\n  \"piso\": 1,\n  \"sector\": \"Z-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E3 Estacionamiento con código vacío -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E4 Estacionamiento inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E5 Asignar vehículo inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoId}}/asignar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculoId\": 999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E6 Vehículo con patente inválida -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{vehiculoUrl}}/api/vehiculos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patente\": \"AB\",\n  \"marca\": \"\",\n  \"modelo\": \"\",\n  \"color\": \"\",\n  \"usuarioId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. CRUD ms-ubicacion",
+      "item": [
+        {
+          "name": "U1 Listar zonas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{ubicacionUrl}}/api/zonas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "U2 Consultar zona por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{ubicacionUrl}}/api/zonas/{{zonaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "U3 Actualizar zona",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ubicacionUrl}}/api/zonas/{{zonaId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{zonaNombre}}\",\n  \"descripcion\": \"Sector norte (actualizada)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "U4 Listar ubicaciones de la zona",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{ubicacionUrl}}/api/ubicaciones?zonaId={{zonaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "U5 Actualizar ubicación (piso 2)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ubicacionUrl}}/api/ubicaciones/{{ubicacionId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zonaId\": {{zonaId}},\n  \"estacionamientoId\": {{estacionamientoId}},\n  \"piso\": 2,\n  \"sector\": \"{{codigo}}\",\n  \"latitud\": -33.45,\n  \"longitud\": -70.66\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Piso actualizado\", () => pm.expect(pm.response.json().piso).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "U6 Eliminar ubicación -> 204",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{ubicacionUrl}}/api/ubicaciones/{{ubicacionId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "U7 Consultar ubicación eliminada -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{ubicacionUrl}}/api/ubicaciones/{{ubicacionId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. CRUD ms-estacionamiento",
+      "item": [
+        {
+          "name": "S1 Crear estacionamiento temporal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigoTemp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"codigoTemp\", \"X\" + (Date.now() % 100000000));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"estacionamientoTempId\", json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S2 Pasar a MANTENCION (actualizar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoTempId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigoTemp}}\",\n  \"estado\": \"MANTENCION\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Estado MANTENCION\", () => pm.expect(pm.response.json().estado).to.eql(\"MANTENCION\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S3 Filtrar por estado MANTENCION",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos?estado=MANTENCION"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S4 Asignar uno en MANTENCION -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoTempId}}/asignar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculoId\": {{vehiculoId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S5 Eliminar estacionamiento -> 204",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoTempId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "S6 Consultar eliminado -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{estacionamientoUrl}}/api/estacionamientos/{{estacionamientoTempId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
