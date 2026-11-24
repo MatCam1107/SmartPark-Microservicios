@@ -1,1 +1,11 @@
-#!/bin/bash echo "=== 1\. Inicializando Docker Swarm Manager ===" docker swarm init --advertise-addr 127.0.0.1 2&gt;/dev/null || echo "Swarm ya se encuentra inicializado." echo "=== 2\. Token para unir nodos Worker (si aplica) ===" docker swarm join-token worker echo "=== 3\. Construyendo imagenes locales para el Stack ===" docker compose build echo "=== 4\. Desplegando Stack SmartPark en Swarm ===" docker stack deploy -c docker-compose.swarm.yml smartpark echo "=== Despliegue completado. Estado de los servicios: ===" docker stack services smartpark
+#!/usr/bin/env bash
+set -euo pipefail
+STACK_NAME="smartpark"
+COMPOSE_FILE="docker-compose.swarm.yml"
+if ! docker info --format "{{.Swarm.LocalNodeState}}" | grep -q "active"; then
+  docker swarm init
+fi
+echo "Token para unir nodos WORKER:"
+docker swarm join-token worker
+docker stack deploy -c "$COMPOSE_FILE" "$STACK_NAME"
+docker stack services "$STACK_NAME"

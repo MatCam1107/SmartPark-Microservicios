@@ -436,4 +436,34 @@ Además, se verificaron:
 
 Como evolución de la arquitectura se pueden incorporar API Gateway, Service Registry, Circuit Breaker, Event Bus y despliegue en la nube, de acuerdo con la arquitectura planteada para etapas posteriores del proyecto.
 
-\## Orquestación con Docker Swarm (EP3) ### Inicialización del Clúster 1\. Iniciar el nodo Manager: \`\`\`bash docker swarm init --advertise-addr 127.0.0.1
+\## Orquestación con Docker Swarm (EP3) ### Topología del Clúster: Manager y Worker Nodes (IE7) La solución utiliza una arquitectura distribuida basada en Docker Swarm: \* \*\*Nodo Manager:\*\* Coordina el clúster, gestiona el estado deseado de los servicios, supervisa la asignación de tareas y expone la red overlay \`smartpark-overlay\`. \* \*\*Nodos Worker:\*\* Ejecutan las réplicas de los contenedores de los microservicios distribuidos sin privilegios administrativos. #### 1\. Inicialización del Nodo Manager \`\`\`bash docker swarm init --advertise-addr 127.0.0.1
+
+## Orquestación con Docker Swarm y CI/CD (EP3)
+
+### Topología Manager y Worker (IE7, IE9)
+* **Nodo Manager:** Administra el estado del clúster, programa tareas y ejecuta despliegues (`docker stack deploy`).
+* **Nodos Worker:** Ejecutan las réplicas de los contenedores sobre la red cifrada `smartpark-overlay`, permitiendo escalabilidad horizontal y alta disponibilidad.
+
+### Comandos de Administración del Clúster
+```bash
+# 1. Construir imágenes locales
+docker compose build
+
+# 2. Inicializar Manager, obtener token Worker y desplegar stack
+./scripts/swarm-init.sh
+
+# 3. Escalar dinámicamente ms-estacionamiento (IE8)
+./scripts/swarm-scale.sh 4
+
+# 4. Ver servicios y réplicas activas
+docker stack services smartpark
+
+# 5. Eliminar el stack
+./scripts/swarm-down.sh
+```
+
+### Pipeline CI/CD (GitHub Actions - IE4, IE5, IE6)
+El flujo en `.github/workflows/ci-cd.yml` automatiza:
+1. **Build y Test:** Compilación Maven y pruebas unitarias en Java 21 (Temurin) para los 5 microservicios.
+2. **Provisionamiento Cloud:** Creación/verificación de la cola AWS SQS y red VPC.
+3. **Empaquetado y Despliegue:** Construcción de imágenes Docker y actualización del stack en Docker Swarm.

@@ -1,1 +1,6 @@
-#!/bin/bash echo "=== Eliminando Stack SmartPark ===" docker stack rm smartpark echo "Stack eliminado. Para salir de Swarm ejecute: docker swarm leave --force"
+#!/usr/bin/env bash
+set -euo pipefail
+STACK_NAME="smartpark"
+docker stack rm "$STACK_NAME"
+sleep 5
+docker service ls

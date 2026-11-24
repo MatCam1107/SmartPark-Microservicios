@@ -1,1 +1,200 @@
-version: "3.8" networks: smartpark-overlay: driver: overlay attachable: true volumes: usuarios\_data: vehiculos\_data: notificaciones\_data: ubicaciones\_data: estacionamientos\_data: services: # ========================================== # BASES DE DATOS (Modo Replicated: 1) # ========================================== mysql-usuarios: image: mysql:8.4 networks: - smartpark-overlay environment: MYSQL\_DATABASE: usuarios\_db MYSQL\_USER: demo MYSQL\_PASSWORD: Demo123! MYSQL\_ROOT\_PASSWORD: Root123! ports: - target: 3306 published: 3311 protocol: tcp mode: host volumes: - usuarios\_data:/var/lib/mysql deploy: replicas: 1 restart\_policy: condition: on-failure resources: limits: cpus: "0.50" memory: 512M mysql-vehiculos: image: mysql:8.4 networks: - smartpark-overlay environment: MYSQL\_DATABASE: vehiculos\_db MYSQL\_USER: demo MYSQL\_PASSWORD: Demo123! MYSQL\_ROOT\_PASSWORD: Root123! ports: - target: 3306 published: 3312 protocol: tcp mode: host volumes: - vehiculos\_data:/var/lib/mysql deploy: replicas: 1 restart\_policy: condition: on-failure mysql-notificaciones: image: mysql:8.4 networks: - smartpark-overlay environment: MYSQL\_DATABASE: notificaciones\_db MYSQL\_USER: demo MYSQL\_PASSWORD: Demo123! MYSQL\_ROOT\_PASSWORD: Root123! ports: - target: 3306 published: 3313 protocol: tcp mode: host volumes: - notificaciones\_data:/var/lib/mysql deploy: replicas: 1 restart\_policy: condition: on-failure mysql-ubicaciones: image: mysql:8.4 networks: - smartpark-overlay environment: MYSQL\_DATABASE: ubicaciones\_db MYSQL\_USER: demo MYSQL\_PASSWORD: Demo123! MYSQL\_ROOT\_PASSWORD: Root123! ports: - target: 3306 published: 3314 protocol: tcp mode: host volumes: - ubicaciones\_data:/var/lib/mysql deploy: replicas: 1 restart\_policy: condition: on-failure mysql-estacionamientos: image: mysql:8.4 networks: - smartpark-overlay environment: MYSQL\_DATABASE: estacionamientos\_db MYSQL\_USER: demo MYSQL\_PASSWORD: Demo123! MYSQL\_ROOT\_PASSWORD: Root123! ports: - target: 3306 published: 3315 protocol: tcp mode: host volumes: - estacionamientos\_data:/var/lib/mysql deploy: replicas: 1 restart\_policy: condition: on-failure # ========================================== # MICROSERVICIOS BACKEND # ========================================== ms-usuario: image: smartpark/ms-usuario:latest networks: - smartpark-overlay ports: - "8083:8080" environment: SERVER\_PORT: 8080 DB\_URL: jdbc:mysql://mysql-usuarios:3306/usuarios\_db?allowPublicKeyRetrieval=true&amp;useSSL=false&amp;serverTimezone=UTC DB\_USER: demo DB\_PASSWORD: Demo123! deploy: replicas: 2 update\_config: parallelism: 1 delay: 10s restart\_policy: condition: on-failure ms-vehiculo: image: smartpark/ms-vehiculo:latest networks: - smartpark-overlay ports: - "8084:8080" environment: SERVER\_PORT: 8080 DB\_URL: jdbc:mysql://mysql-vehiculos:3306/vehiculos\_db?allowPublicKeyRetrieval=true&amp;useSSL=false&amp;serverTimezone=UTC DB\_USER: demo DB\_PASSWORD: Demo123! deploy: replicas: 2 update\_config: parallelism: 1 delay: 10s restart\_policy: condition: on-failure ms-notificacion: image: smartpark/ms-notificacion:latest networks: - smartpark-overlay ports: - "8085:8080" environment: SERVER\_PORT: 8080 DB\_URL: jdbc:mysql://mysql-notificaciones:3306/notificaciones\_db?allowPublicKeyRetrieval=true&amp;useSSL=false&amp;serverTimezone=UTC DB\_USER: demo DB\_PASSWORD: Demo123! deploy: replicas: 1 restart\_policy: condition: on-failure ms-ubicacion: image: smartpark/ms-ubicacion:latest networks: - smartpark-overlay ports: - "8086:8080" environment: SERVER\_PORT: 8080 DB\_URL: jdbc:mysql://mysql-ubicaciones:3306/ubicaciones\_db?allowPublicKeyRetrieval=true&amp;useSSL=false&amp;serverTimezone=UTC DB\_USER: demo DB\_PASSWORD: Demo123! deploy: replicas: 1 restart\_policy: condition: on-failure # Microservicio Crítico: 2 réplicas iniciales para balanceo y alta disponibilidad ms-estacionamiento: image: smartpark/ms-estacionamiento:latest networks: - smartpark-overlay ports: - "8087:8080" environment: SERVER\_PORT: 8080 DB\_URL: jdbc:mysql://mysql-estacionamientos:3306/estacionamientos\_db?allowPublicKeyRetrieval=true&amp;useSSL=false&amp;serverTimezone=UTC DB\_USER: demo DB\_PASSWORD: Demo123! VEHICULO\_URL: http://ms-vehiculo:8080 NOTIFICACION\_URL: http://ms-notificacion:8080 deploy: replicas: 2 update\_config: parallelism: 1 delay: 10s restart\_policy: condition: on-failure
+﻿version: "3.8"
+
+networks:
+  smartpark-overlay:
+    driver: overlay
+    attachable: true
+
+volumes:
+  usuarios_data:
+  vehiculos_data:
+  notificaciones_data:
+  ubicaciones_data:
+  estacionamientos_data:
+
+services:
+  mysql-usuarios:
+    image: mysql:8.4
+    networks:
+      - smartpark-overlay
+    environment:
+      MYSQL_DATABASE: usuarios_db
+      MYSQL_USER: demo
+      MYSQL_PASSWORD: Demo123!
+      MYSQL_ROOT_PASSWORD: Root123!
+    ports:
+      - target: 3306
+        published: 3311
+        protocol: tcp
+        mode: host
+    volumes:
+      - usuarios_data:/var/lib/mysql
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  mysql-vehiculos:
+    image: mysql:8.4
+    networks:
+      - smartpark-overlay
+    environment:
+      MYSQL_DATABASE: vehiculos_db
+      MYSQL_USER: demo
+      MYSQL_PASSWORD: Demo123!
+      MYSQL_ROOT_PASSWORD: Root123!
+    ports:
+      - target: 3306
+        protocol: tcp
+        mode: host
+    volumes:
+      - vehiculos_data:/var/lib/mysql
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  mysql-notificaciones:
+    image: mysql:8.4
+    networks:
+      - smartpark-overlay
+    environment:
+      MYSQL_DATABASE: notificaciones_db
+      MYSQL_USER: demo
+      MYSQL_PASSWORD: Demo123!
+      MYSQL_ROOT_PASSWORD: Root123!
+    ports:
+      - target: 3306
+        published: 3313
+        protocol: tcp
+        mode: host
+    volumes:
+      - notificaciones_data:/var/lib/mysql
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  mysql-ubicaciones:
+    image: mysql:8.4
+    networks:
+      - smartpark-overlay
+    environment:
+      MYSQL_DATABASE: ubicaciones_db
+      MYSQL_USER: demo
+      MYSQL_PASSWORD: Demo123!
+      MYSQL_ROOT_PASSWORD: Root123!
+    ports:
+      - target: 3306
+        published: 3314
+        protocol: tcp
+        mode: host
+    volumes:
+      - ubicaciones_data:/var/lib/mysql
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  mysql-estacionamientos:
+    image: mysql:8.4
+    networks:
+      - smartpark-overlay
+    environment:
+      MYSQL_DATABASE: estacionamientos_db
+      MYSQL_USER: demo
+      MYSQL_PASSWORD: Demo123!
+      MYSQL_ROOT_PASSWORD: Root123!
+    ports:
+      - target: 3306
+        published: 3315
+        protocol: tcp
+        mode: host
+    volumes:
+      - estacionamientos_data:/var/lib/mysql
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  ms-usuario:
+    image: smartpark-microservicios-ms-usuario:latest
+    networks:
+      - smartpark-overlay
+    ports:
+      - "8083:8080"
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql-usuarios:3306/usuarios_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: demo
+      DB_PASSWORD: Demo123!
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  ms-vehiculo:
+    image: smartpark-microservicios-ms-vehiculo:latest
+    networks:
+      - smartpark-overlay
+    ports:
+      - "8084:8080"
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql-vehiculos:3306/vehiculos_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: demo
+      DB_PASSWORD: Demo123!
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  ms-notificacion:
+    image: smartpark-microservicios-ms-notificacion:latest
+    networks:
+      - smartpark-overlay
+    ports:
+      - "8085:8080"
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql-notificaciones:3306/notificaciones_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: demo
+      DB_PASSWORD: Demo123!
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  ms-ubicacion:
+    image: smartpark-microservicios-ms-ubicacion:latest
+    networks:
+      - smartpark-overlay
+    ports:
+      - "8086:8080"
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql-ubicaciones:3306/ubicaciones_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: demo
+      DB_PASSWORD: Demo123!
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  ms-estacionamiento:
+    image: smartpark-microservicios-ms-estacionamiento:latest
+    networks:
+      - smartpark-overlay
+    ports:
+      - "8087:8080"
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql-estacionamientos:3306/estacionamientos_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: demo
+      DB_PASSWORD: Demo123!
+      VEHICULO_URL: http://ms-vehiculo:8080
+      NOTIFICACION_URL: http://ms-notificacion:8080
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
