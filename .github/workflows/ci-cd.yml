@@ -1,0 +1,103 @@
+name: SmartPark CI/CD Pipeline
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+env:
+  AWS_REGION: us-east-1
+  SQS_QUEUE_NAME: smartpark-notificaciones-queue
+  ECR_PREFIX: smartpark-microservicios
+jobs:
+  build-and-test:
+    name: Etapa 1 - Build y Tests Maven (Java 21)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: Root123!
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: demo
+          MYSQL_PASSWORD: Demo123!
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=10
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ms-usuario, ms-vehiculo, ms-notificacion, ms-ubicacion, ms-estacionamiento]
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+      - name: Configurar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
+      - name: Compilar y ejecutar tests en ${{ matrix.service }}
+        env:
+          DB_URL: jdbc:mysql://127.0.0.1:3306/test_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+          DB_USER: demo
+          DB_PASSWORD: Demo123!
+        run: |
+          SVC_DIR="${{ matrix.service }}"
+          [ -d "microservicios/$SVC_DIR" ] && SVC_DIR="microservicios/$SVC_DIR"
+          cd "$SVC_DIR"
+          mvn clean verify -B -Dspring.datasource.url="$DB_URL" -Dspring.datasource.username="$DB_USER" -Dspring.datasource.password="$DB_PASSWORD"
+  provision-cloud:
+    name: Etapa 2 - Provisionamiento Cloud AWS (IE5)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    env:
+      AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+      - name: Configurar credenciales AWS
+        if: env.AWS_KEY
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Aprovisionar cola SQS y verificar VPC
+        run: |
+          if [ -n "$AWS_KEY" ]; then
+            aws sqs create-queue --queue-name "$SQS_QUEUE_NAME" --attributes VisibilityTimeout=30,MessageRetentionPeriod=86400
+            aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text
+          else
+            echo "Configure AWS_ACCESS_KEY_ID en GitHub Secrets para aprovisionar en AWS."
+          fi
+  package-and-deploy:
+    name: Etapa 3 - Empaquetado Docker y Despliegue Cloud (IE4, IE6)
+    runs-on: ubuntu-latest
+    needs: provision-cloud
+    if: github.ref == 'refs/heads/main'
+    env:
+      SWARM_HOST: ${{ secrets.SWARM_MANAGER_HOST }}
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+      - name: Construir imagenes Docker de los 5 microservicios
+        run: |
+          for SVC in ms-usuario ms-vehiculo ms-notificacion ms-ubicacion ms-estacionamiento; do
+            SVC_DIR="$SVC"
+            [ -d "microservicios/$SVC" ] && SVC_DIR="microservicios/$SVC"
+            docker build -t "$ECR_PREFIX-$SVC:latest" "$SVC_DIR"
+          done
+      - name: Despliegue continuo en Swarm Cloud via SSH
+        if: env.SWARM_HOST
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SWARM_MANAGER_HOST }}
+          username: ${{ secrets.SWARM_MANAGER_USER }}
+          key: ${{ secrets.SWARM_MANAGER_SSH_KEY }}
+          script: |
+            cd ~/SmartPark-Microservicios
+            git pull origin main
+            docker stack deploy -c docker-compose.swarm.yml smartpark
+            docker stack services smartpark
