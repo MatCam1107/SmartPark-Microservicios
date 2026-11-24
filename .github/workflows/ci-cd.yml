@@ -12,6 +12,17 @@ jobs:
   build-and-test:
     name: Etapa 1 - Build y Tests Maven (Java 21)
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: Root123!
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: demo
+          MYSQL_PASSWORD: Demo123!
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=10
     strategy:
       fail-fast: false
       matrix:
@@ -26,11 +37,15 @@ jobs:
           distribution: "temurin"
           cache: "maven"
       - name: Compilar y ejecutar tests en ${{ matrix.service }}
+        env:
+          DB_URL: jdbc:mysql://127.0.0.1:3306/test_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+          DB_USER: demo
+          DB_PASSWORD: Demo123!
         run: |
           SVC_DIR="${{ matrix.service }}"
           [ -d "microservicios/$SVC_DIR" ] && SVC_DIR="microservicios/$SVC_DIR"
           cd "$SVC_DIR"
-          mvn clean verify -B
+          mvn clean verify -B -Dspring.datasource.url="$DB_URL" -Dspring.datasource.username="$DB_USER" -Dspring.datasource.password="$DB_PASSWORD"
   provision-cloud:
     name: Etapa 2 - Provisionamiento Cloud AWS (IE5)
     runs-on: ubuntu-latest
