@@ -435,3 +435,5 @@ Además, se verificaron:
 ## Próximas etapas
 
 Como evolución de la arquitectura se pueden incorporar API Gateway, Service Registry, Circuit Breaker, Event Bus y despliegue en la nube, de acuerdo con la arquitectura planteada para etapas posteriores del proyecto.
+
+\## Orquestación con Docker Swarm (EP3) ### Inicialización del Clúster 1\. Iniciar el nodo Manager: \`\`\`bash docker swarm init --advertise-addr 127.0.0.1

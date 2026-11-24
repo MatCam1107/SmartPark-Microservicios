@@ -1,0 +1,1 @@
+#!/bin/bash echo "=== Eliminando Stack SmartPark ===" docker stack rm smartpark echo "Stack eliminado. Para salir de Swarm ejecute: docker swarm leave --force"
