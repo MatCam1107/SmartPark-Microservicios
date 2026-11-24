@@ -467,3 +467,12 @@ El flujo en `.github/workflows/ci-cd.yml` automatiza:
 1. **Build y Test:** Compilación Maven y pruebas unitarias en Java 21 (Temurin) para los 5 microservicios.
 2. **Provisionamiento Cloud:** Creación/verificación de la cola AWS SQS y red VPC.
 3. **Empaquetado y Despliegue:** Construcción de imágenes Docker y actualización del stack en Docker Swarm.
+
+### Configuración Multi-Nodo (Manager y Worker)
+1. **Inicializar Manager con IP real (sin `127.0.0.1`):**
+   ```bash
+   ./scripts/swarm-init.sh <IP_PRIVADA_O_PUBLICA_MANAGER>
+   ```
+2. **Puertos requeridos en el Security Group / Firewall entre nodos:** `2377/tcp` (gestión del clúster), `7946/tcp+udp` (comunicación entre nodos) y `4789/udp` (red overlay).
+3. **Unir un nodo Worker:** Ejecutar en la segunda máquina el comando `docker swarm join --token <TOKEN> <IP_MANAGER>:2377` entregado por el script y validar con `docker node ls`.
+4. **Imágenes distribuidas:** El pipeline publica automáticamente las 5 imágenes en GitHub Container Registry (`ghcr.io/matcam1107/smartpark-microservicios-ms-<nombre>:latest`) para que cualquier nodo Worker pueda descargarlas.
