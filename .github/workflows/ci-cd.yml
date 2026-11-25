@@ -9,7 +9,8 @@ permissions:
   packages: write
 env:
   AWS_REGION: us-east-1
-  SQS_QUEUE_NAME: smartpark-notificaciones-queue
+  SQS_QUEUE_NAME: smartpark-asignaciones
+  LAMBDA_FUNCTION_NAME: smartpark-receptor-asignaciones
   REGISTRY: ghcr.io
   IMAGE_PREFIX: matcam1107/smartpark-microservicios
 jobs:
@@ -68,11 +69,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Aprovisionar cola SQS y verificar VPC
+      - name: Aprovisionar cola SQS y verificar VPC y Lambda
         run: |
           if [ -n "$AWS_KEY" ]; then
-            aws sqs create-queue --queue-name "$SQS_QUEUE_NAME" --attributes VisibilityTimeout=30,MessageRetentionPeriod=86400
+            QUEUE_URL=$(aws sqs create-queue --queue-name "$SQS_QUEUE_NAME" --attributes VisibilityTimeout=30,MessageRetentionPeriod=86400 --query 'QueueUrl' --output text)
+            echo "Cola SQS operativa: $QUEUE_URL"
             aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text
+            aws lambda get-function --function-name "$LAMBDA_FUNCTION_NAME" --query 'Configuration.{Function:FunctionName,Runtime:Runtime,State:State}' --output table || echo "Lambda aun no creada en esta cuenta."
           else
             echo "Configure AWS_ACCESS_KEY_ID en GitHub Secrets para aprovisionar en AWS."
           fi
@@ -111,5 +114,6 @@ jobs:
           script: |
             cd ~/SmartPark-Microservicios
             git pull origin main
-            docker stack deploy -c docker-compose.swarm.yml smartpark
+            [ -f .env ] && set -a && source .env && set +a
+            docker stack deploy --with-registry-auth --resolve-image always -c docker-compose.swarm.yml smartpark
             docker stack services smartpark
