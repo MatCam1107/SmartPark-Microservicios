@@ -2,6 +2,7 @@ package cl.duoc.msestacionamiento.service;
 
 import cl.duoc.msestacionamiento.client.NotificacionClient;
 import cl.duoc.msestacionamiento.client.VehiculoClient;
+import cl.duoc.msestacionamiento.client.SqsProducer;
 import cl.duoc.msestacionamiento.dto.NotificacionRequest;
 import cl.duoc.msestacionamiento.dto.VehiculoResponse;
 import cl.duoc.msestacionamiento.exception.ConflictoException;
@@ -33,15 +34,18 @@ public class AsignacionService {
     private final EstacionamientoRepository estacionamientoRepository;
     private final VehiculoClient vehiculoClient;
     private final NotificacionClient notificacionClient;
+    private final SqsProducer sqsProducer;
 
     public AsignacionService(AsignacionRepository asignacionRepository,
                              EstacionamientoRepository estacionamientoRepository,
                              VehiculoClient vehiculoClient,
-                             NotificacionClient notificacionClient) {
+                             NotificacionClient notificacionClient,
+                             SqsProducer sqsProducer) {
         this.asignacionRepository = asignacionRepository;
         this.estacionamientoRepository = estacionamientoRepository;
         this.vehiculoClient = vehiculoClient;
         this.notificacionClient = notificacionClient;
+        this.sqsProducer = sqsProducer;
     }
 
     public List<Asignacion> listar() {
@@ -86,6 +90,7 @@ public class AsignacionService {
         Asignacion asignacion = new Asignacion(
                 null, estacionamiento, vehiculoId,
                 LocalDateTime.now(), null, EstadoAsignacion.ACTIVA);
+
         Asignacion guardada = asignacionRepository.save(asignacion);
 
         logger.info("Estacionamiento {} asignado al vehículo {}",
@@ -98,17 +103,20 @@ public class AsignacionService {
                 "ASIGNACION",
                 false);
 
-        // La notificación se envía solo si la transacción se confirmó
+        // La notificación y el evento SQS se envían
+        // después de confirmar la transacción.
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(
                     new TransactionSynchronization() {
                         @Override
                         public void afterCommit() {
                             notificacionClient.enviar(notificacion);
+                            sqsProducer.enviarAsignacion(guardada.getId());
                         }
                     });
         } else {
             notificacionClient.enviar(notificacion);
+            sqsProducer.enviarAsignacion(guardada.getId());
         }
 
         return guardada;
