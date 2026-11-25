@@ -22,11 +22,6 @@ services:
       MYSQL_USER: demo
       MYSQL_PASSWORD: Demo123!
       MYSQL_ROOT_PASSWORD: Root123!
-    ports:
-      - target: 3306
-        published: 3311
-        protocol: tcp
-        mode: host
     volumes:
       - usuarios_data:/var/lib/mysql
     deploy:
@@ -43,10 +38,6 @@ services:
       MYSQL_USER: demo
       MYSQL_PASSWORD: Demo123!
       MYSQL_ROOT_PASSWORD: Root123!
-    ports:
-      - target: 3306
-        protocol: tcp
-        mode: host
     volumes:
       - vehiculos_data:/var/lib/mysql
     deploy:
@@ -63,11 +54,6 @@ services:
       MYSQL_USER: demo
       MYSQL_PASSWORD: Demo123!
       MYSQL_ROOT_PASSWORD: Root123!
-    ports:
-      - target: 3306
-        published: 3313
-        protocol: tcp
-        mode: host
     volumes:
       - notificaciones_data:/var/lib/mysql
     deploy:
@@ -84,11 +70,6 @@ services:
       MYSQL_USER: demo
       MYSQL_PASSWORD: Demo123!
       MYSQL_ROOT_PASSWORD: Root123!
-    ports:
-      - target: 3306
-        published: 3314
-        protocol: tcp
-        mode: host
     volumes:
       - ubicaciones_data:/var/lib/mysql
     deploy:
@@ -105,11 +86,6 @@ services:
       MYSQL_USER: demo
       MYSQL_PASSWORD: Demo123!
       MYSQL_ROOT_PASSWORD: Root123!
-    ports:
-      - target: 3306
-        published: 3315
-        protocol: tcp
-        mode: host
     volumes:
       - estacionamientos_data:/var/lib/mysql
     deploy:
@@ -121,8 +97,6 @@ services:
     image: smartpark-microservicios-ms-usuario:latest
     networks:
       - smartpark-overlay
-    ports:
-      - "8083:8080"
     environment:
       SERVER_PORT: 8080
       DB_URL: jdbc:mysql://mysql-usuarios:3306/usuarios_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
@@ -137,8 +111,6 @@ services:
     image: smartpark-microservicios-ms-vehiculo:latest
     networks:
       - smartpark-overlay
-    ports:
-      - "8084:8080"
     environment:
       SERVER_PORT: 8080
       DB_URL: jdbc:mysql://mysql-vehiculos:3306/vehiculos_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
@@ -153,8 +125,6 @@ services:
     image: smartpark-microservicios-ms-notificacion:latest
     networks:
       - smartpark-overlay
-    ports:
-      - "8085:8080"
     environment:
       SERVER_PORT: 8080
       DB_URL: jdbc:mysql://mysql-notificaciones:3306/notificaciones_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
@@ -169,8 +139,6 @@ services:
     image: smartpark-microservicios-ms-ubicacion:latest
     networks:
       - smartpark-overlay
-    ports:
-      - "8086:8080"
     environment:
       SERVER_PORT: 8080
       DB_URL: jdbc:mysql://mysql-ubicaciones:3306/ubicaciones_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
@@ -185,8 +153,6 @@ services:
     image: smartpark-microservicios-ms-estacionamiento:latest
     networks:
       - smartpark-overlay
-    ports:
-      - "8087:8080"
     environment:
       SERVER_PORT: 8080
       DB_URL: jdbc:mysql://mysql-estacionamientos:3306/estacionamientos_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
