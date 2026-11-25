@@ -21,4 +21,5 @@ fi
 echo "=== Comando para unir nodos WORKER ==="
 docker swarm join-token worker
 docker stack deploy -c "$COMPOSE_FILE" "$STACK_NAME"
+docker compose -f api-gateway/docker-compose.gateway.yml up -d
 docker stack services "$STACK_NAME"

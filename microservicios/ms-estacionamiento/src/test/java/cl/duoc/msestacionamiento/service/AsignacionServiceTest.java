@@ -1,6 +1,7 @@
 package cl.duoc.msestacionamiento.service;
 
 import cl.duoc.msestacionamiento.client.NotificacionClient;
+import cl.duoc.msestacionamiento.client.SqsProducer;
 import cl.duoc.msestacionamiento.client.VehiculoClient;
 import cl.duoc.msestacionamiento.dto.NotificacionRequest;
 import cl.duoc.msestacionamiento.dto.VehiculoResponse;
@@ -40,6 +41,9 @@ class AsignacionServiceTest {
     @Mock
     private NotificacionClient notificacionClient;
 
+    @Mock
+    private SqsProducer sqsProducer;
+
     @InjectMocks
     private AsignacionService asignacionService;
 
@@ -59,34 +63,46 @@ class AsignacionServiceTest {
     void asignar_conDatosValidos_ocupaElEstacionamientoYNotifica() {
         Estacionamiento estacionamiento =
                 crearEstacionamiento(EstadoEstacionamiento.DISPONIBLE);
+
         when(estacionamientoRepository.findById(1L))
                 .thenReturn(Optional.of(estacionamiento));
+
         when(asignacionRepository.existsByVehiculoIdAndEstado(
                 5L, EstadoAsignacion.ACTIVA)).thenReturn(false);
+
         when(vehiculoClient.buscarPorId(5L))
                 .thenReturn(Optional.of(crearVehiculo()));
+
         when(asignacionRepository.save(any(Asignacion.class)))
-                .thenAnswer(invocacion -> invocacion.getArgument(0));
+                .thenAnswer(invocacion -> {
+                    Asignacion asignacion = invocacion.getArgument(0);
+                    asignacion.setId(1L);
+                    return asignacion;
+                });
 
         Asignacion resultado = asignacionService.asignar(1L, 5L);
 
+        assertEquals(1L, resultado.getId());
         assertEquals(EstadoAsignacion.ACTIVA, resultado.getEstado());
         assertEquals(EstadoEstacionamiento.OCUPADO, estacionamiento.getEstado());
         assertEquals(5L, resultado.getVehiculoId());
         assertNotNull(resultado.getFechaInicio());
         assertNull(resultado.getFechaTermino());
+
         verify(estacionamientoRepository).save(estacionamiento);
         verify(notificacionClient).enviar(any(NotificacionRequest.class));
+        verify(sqsProducer).enviarAsignacion(1L);
     }
 
     @Test
     void asignar_estacionamientoInexistente_lanzaNoEncontrado() {
-        when(estacionamientoRepository.findById(1L)).thenReturn(Optional.empty());
+        when(estacionamientoRepository.findById(1L))
+                .thenReturn(Optional.empty());
 
         assertThrows(RecursoNoEncontradoException.class,
                 () -> asignacionService.asignar(1L, 5L));
 
-        verifyNoInteractions(vehiculoClient, notificacionClient);
+        verifyNoInteractions(vehiculoClient, notificacionClient, sqsProducer);
     }
 
     @Test
@@ -97,43 +113,49 @@ class AsignacionServiceTest {
         assertThrows(ConflictoException.class,
                 () -> asignacionService.asignar(1L, 5L));
 
-        verifyNoInteractions(vehiculoClient, notificacionClient);
+        verifyNoInteractions(vehiculoClient, notificacionClient, sqsProducer);
     }
 
     @Test
     void asignar_vehiculoConAsignacionActiva_lanzaConflicto() {
         when(estacionamientoRepository.findById(1L)).thenReturn(
                 Optional.of(crearEstacionamiento(EstadoEstacionamiento.DISPONIBLE)));
+
         when(asignacionRepository.existsByVehiculoIdAndEstado(
                 5L, EstadoAsignacion.ACTIVA)).thenReturn(true);
 
         assertThrows(ConflictoException.class,
                 () -> asignacionService.asignar(1L, 5L));
 
-        verifyNoInteractions(vehiculoClient, notificacionClient);
+        verifyNoInteractions(vehiculoClient, notificacionClient, sqsProducer);
     }
 
     @Test
     void asignar_vehiculoInexistente_lanzaNoEncontradoYNoOcupa() {
         when(estacionamientoRepository.findById(1L)).thenReturn(
                 Optional.of(crearEstacionamiento(EstadoEstacionamiento.DISPONIBLE)));
+
         when(asignacionRepository.existsByVehiculoIdAndEstado(
                 5L, EstadoAsignacion.ACTIVA)).thenReturn(false);
-        when(vehiculoClient.buscarPorId(5L)).thenReturn(Optional.empty());
+
+        when(vehiculoClient.buscarPorId(5L))
+                .thenReturn(Optional.empty());
 
         assertThrows(RecursoNoEncontradoException.class,
                 () -> asignacionService.asignar(1L, 5L));
 
         verify(estacionamientoRepository, never()).save(any(Estacionamiento.class));
-        verifyNoInteractions(notificacionClient);
+        verifyNoInteractions(notificacionClient, sqsProducer);
     }
 
     @Test
     void asignar_msVehiculoCaido_propagaServicioNoDisponible() {
         when(estacionamientoRepository.findById(1L)).thenReturn(
                 Optional.of(crearEstacionamiento(EstadoEstacionamiento.DISPONIBLE)));
+
         when(asignacionRepository.existsByVehiculoIdAndEstado(
                 5L, EstadoAsignacion.ACTIVA)).thenReturn(false);
+
         when(vehiculoClient.buscarPorId(5L)).thenThrow(
                 new ServicioNoDisponibleException("ms-vehiculo no disponible"));
 
@@ -141,19 +163,23 @@ class AsignacionServiceTest {
                 () -> asignacionService.asignar(1L, 5L));
 
         verify(estacionamientoRepository, never()).save(any(Estacionamiento.class));
-        verifyNoInteractions(notificacionClient);
+        verifyNoInteractions(notificacionClient, sqsProducer);
     }
 
     @Test
     void liberar_conAsignacionActiva_finalizaYDejaDisponible() {
         Estacionamiento estacionamiento =
                 crearEstacionamiento(EstadoEstacionamiento.OCUPADO);
+
         Asignacion asignacion = new Asignacion(1L, estacionamiento, 5L,
                 LocalDateTime.now(), null, EstadoAsignacion.ACTIVA);
+
         when(estacionamientoRepository.findById(1L))
                 .thenReturn(Optional.of(estacionamiento));
+
         when(asignacionRepository.findByEstacionamientoIdAndEstado(
                 1L, EstadoAsignacion.ACTIVA)).thenReturn(Optional.of(asignacion));
+
         when(asignacionRepository.save(any(Asignacion.class)))
                 .thenAnswer(invocacion -> invocacion.getArgument(0));
 
@@ -162,16 +188,21 @@ class AsignacionServiceTest {
         assertEquals(EstadoAsignacion.FINALIZADA, resultado.getEstado());
         assertNotNull(resultado.getFechaTermino());
         assertEquals(EstadoEstacionamiento.DISPONIBLE, estacionamiento.getEstado());
+
+        verifyNoInteractions(sqsProducer);
     }
 
     @Test
     void liberar_sinAsignacionActiva_lanzaConflicto() {
         when(estacionamientoRepository.findById(1L)).thenReturn(
                 Optional.of(crearEstacionamiento(EstadoEstacionamiento.DISPONIBLE)));
+
         when(asignacionRepository.findByEstacionamientoIdAndEstado(
                 1L, EstadoAsignacion.ACTIVA)).thenReturn(Optional.empty());
 
         assertThrows(ConflictoException.class,
                 () -> asignacionService.liberar(1L));
+
+        verifyNoInteractions(sqsProducer);
     }
 }
