@@ -160,6 +160,8 @@ services:
       DB_PASSWORD: Demo123!
       VEHICULO_URL: http://ms-vehiculo:8080
       NOTIFICACION_URL: http://ms-notificacion:8080
+      SQS_QUEUE_URL: "${SQS_QUEUE_URL:-}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
     deploy:
       replicas: 2
       restart_policy:
